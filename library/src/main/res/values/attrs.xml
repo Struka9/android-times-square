@@ -5,6 +5,7 @@
     <attr name="tsquare_dividerColor" format="color"/>
     <attr name="tsquare_dayBackground" format="reference"/>
     <attr name="tsquare_dayTextColor" format="color"/>
+    <attr name="tsquare_otherMonthDayTextColor" format="color"/>
     <attr name="tsquare_titleTextStyle" format="reference"/>
     <attr name="tsquare_displayHeader" format="boolean"/>
     <attr name="tsquare_displayDayNamesHeaderRow" format="boolean"/>

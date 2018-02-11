@@ -60,7 +60,11 @@ public class CalendarPickerView extends ListView {
      * <li>Have one date selected and then select an earlier date.</li>
      * </ul>
      */
-    RANGE
+    RANGE,
+    /**
+     * Allows you to select multiple ranges
+     */
+    MULTI_RANGE
   }
 
   // List of languages that require manually creation of YYYY MMMM date format
@@ -143,6 +147,7 @@ public class CalendarPickerView extends ListView {
             a.getBoolean(R.styleable.CalendarPickerView_tsquare_displayDayNamesHeaderRow, true);
     displayAlwaysDigitNumbers =
             a.getBoolean(R.styleable.CalendarPickerView_tsquare_displayAlwaysDigitNumbers, false);
+
     a.recycle();
 
     adapter = new MonthAdapter();
@@ -709,6 +714,10 @@ public class CalendarPickerView extends ListView {
         }
         break;
 
+      case MULTI_RANGE:
+        // Still thinking what do
+        break;
+
       case MULTIPLE:
         date = applyMultiSelect(date, newlySelectedCal);
         break;
@@ -726,7 +735,10 @@ public class CalendarPickerView extends ListView {
         selectedCells.add(cell);
         cell.setSelected(true);
       }
-      selectedCals.add(newlySelectedCal);
+
+      if (selectionMode != SelectionMode.MULTI_RANGE) {
+        selectedCals.add(newlySelectedCal);
+      }
 
       if (selectionMode == SelectionMode.RANGE && selectedCells.size() > 1) {
         // Select all days in between start and end.
@@ -751,12 +763,154 @@ public class CalendarPickerView extends ListView {
             }
           }
         }
+      } else if (selectionMode == SelectionMode.MULTI_RANGE) {
+        // Find the range this date belongs to
+        int nextClosestRange = findClosestGreaterRangeForDate(newlySelectedCal);
+        int previousClosestRange = findClosestLowerRangeForDate(newlySelectedCal);
+
+        if (nextClosestRange == -1 && previousClosestRange == -1) {
+          // Simplest case, just add new range
+          // We add a new one day range
+          selectedCals.add(newlySelectedCal);
+          selectedCals.add(newlySelectedCal);
+        } else if (previousClosestRange != -1 && nextClosestRange != -1) {
+          boolean wasAddedToRange = false;
+          Calendar endOfPreviousRange = (Calendar) selectedCals.get(previousClosestRange).clone();
+          Calendar startOfNextRange = (Calendar) selectedCals.get(nextClosestRange).clone();
+
+          // Test if end of prev range is one day before the new date
+          endOfPreviousRange.add(Calendar.DAY_OF_YEAR, 1);
+          if (endOfPreviousRange.get(Calendar.DAY_OF_YEAR) == newlySelectedCal.get(Calendar.DAY_OF_YEAR)) {
+            selectedCals.set(previousClosestRange, newlySelectedCal);
+            wasAddedToRange = true;
+          }
+
+          // Test if the start of the next range is one day after the new data
+          startOfNextRange.add(Calendar.DAY_OF_YEAR, -1);
+          if (startOfNextRange.get(Calendar.DAY_OF_YEAR) == newlySelectedCal.get(Calendar.DAY_OF_YEAR)) {
+            selectedCals.set(nextClosestRange, newlySelectedCal);
+            wasAddedToRange = true;
+          }
+
+          if (endOfPreviousRange.get(Calendar.DAY_OF_YEAR) == startOfNextRange.get(Calendar.DAY_OF_YEAR)) {
+            // We now 'merge' the ranges
+
+            // The end of the next closest range becomes the end of the previos range
+            selectedCals.set(previousClosestRange, selectedCals.get(nextClosestRange + 1));
+
+            // We remove the second range
+            selectedCals.remove(nextClosestRange);
+            // We use the same index since once we remove it the first one
+            // the list size will reduce
+            selectedCals.remove(nextClosestRange);
+          }
+
+          if (!wasAddedToRange) {
+            selectedCals.add(newlySelectedCal);
+            selectedCals.add(newlySelectedCal);
+          }
+        } else if (nextClosestRange != -1 && previousClosestRange == -1) {
+          // Has upper range, check if we should set it in there or create a new range
+          // Check if we can make the new date the new start for the range
+          Calendar test = (Calendar) newlySelectedCal.clone();
+          test.add(Calendar.DAY_OF_YEAR, 1);
+
+          if (test.get(Calendar.DAY_OF_YEAR)
+                  == selectedCals.get(nextClosestRange).get(Calendar.DAY_OF_YEAR)) {
+              // It means the #newlySelectedCal it's one day before the closest next range
+              // We set the newly created date as the start of the next range
+            selectedCals.set(nextClosestRange, newlySelectedCal);
+          } else {
+            selectedCals.add(newlySelectedCal);
+            selectedCals.add(newlySelectedCal);
+          }
+        } else if (previousClosestRange != -1 && nextClosestRange == -1) {
+          // Has lower range, check if we should set it in there or create a new range
+          Calendar test = (Calendar)newlySelectedCal.clone();
+          test.add(Calendar.DAY_OF_YEAR, -1);
+
+          if (test.get(Calendar.DAY_OF_YEAR)
+                  == selectedCals.get(previousClosestRange).get(Calendar.DAY_OF_YEAR)) {
+            selectedCals.set(previousClosestRange, newlySelectedCal);
+          } else {
+            selectedCals.add(newlySelectedCal);
+            selectedCals.add(newlySelectedCal);
+          }
+        }
+
+        // Now the calendars are updated we need to mark the range state for
+        // each of the cells
+        for (int i = 0; i < selectedCals.size(); i+=2) {
+          // Select all days in between start and end.
+          Calendar start = selectedCals.get(i);
+          Calendar end = selectedCals.get(i + 1);
+
+          int startMonthIndex = cells.getIndexOfKey(monthKey(start));
+          int endMonthIndex = cells.getIndexOfKey(monthKey(end));
+          for (int monthIndex = startMonthIndex; monthIndex <= endMonthIndex; monthIndex++) {
+            List<List<MonthCellDescriptor>> month = cells.getValueAtIndex(monthIndex);
+            for (List<MonthCellDescriptor> week : month) {
+              for (MonthCellDescriptor singleCell : week) {
+                if (singleCell.getDate().after(start.getTime())
+                        && singleCell.getDate().before(end.getTime())
+                        && singleCell.isSelectable()) {
+                  singleCell.setSelected(true);
+                  singleCell.setRangeState(RangeState.MIDDLE);
+                  selectedCells.add(singleCell);
+                } else if (singleCell.getDate().getDay() == start.get(Calendar.DAY_OF_YEAR) && singleCell.getDate().getYear() == start.get(Calendar.YEAR)) {
+                  singleCell.setRangeState(RangeState.FIRST);
+                } else if (singleCell.getDate().getDay() == end.get(Calendar.DAY_OF_YEAR) && singleCell.getDate().getYear() == end.get(Calendar.YEAR)) {
+                  singleCell.setRangeState(RangeState.LAST);
+                }
+              }
+            }
+          }
+        }
+
       }
     }
 
     // Update the adapter.
     validateAndUpdate();
     return date != null;
+  }
+
+  private int findClosestLowerRangeForDate(Calendar newCal) {
+    if (newCal == null) return -1;
+
+    int index = -1;
+    for (int i = 1; i < selectedCals.size(); i+= 2) {
+      Calendar end = selectedCals.get(i);
+
+      if (end.before(newCal)) {
+        if (index == -1 ||
+                Math.abs(newCal.getTime().getTime() - end.getTime().getTime()) <
+                         Math.abs(newCal.getTime().getTime() - selectedCals.get(index).getTime().getTime())) {
+          index = i;
+        }
+      }
+    }
+
+    return index;
+  }
+
+  private int findClosestGreaterRangeForDate(Calendar newCal) {
+    if (newCal == null) return -1;
+
+    int index = -1;
+    for (int i = 0; i < selectedCals.size(); i+= 2) {
+      Calendar start = selectedCals.get(i);
+
+      if (start.after(newCal)) {
+        if (index == -1 ||
+                Math.abs(start.getTime().getTime() - newCal.getTime().getTime()) <
+                        Math.abs(selectedCals.get(index).getTime().getTime() - newCal.getTime().getTime())) {
+          index = i;
+        }
+      }
+    }
+
+    return index;
   }
 
   private String monthKey(Calendar cal) {
@@ -775,7 +929,7 @@ public class CalendarPickerView extends ListView {
       if (dateListener != null) {
         Date selectedDate = selectedCell.getDate();
 
-        if (selectionMode == SelectionMode.RANGE) {
+        if (selectionMode == SelectionMode.RANGE || selectionMode == SelectionMode.MULTI_RANGE) {
           int index = selectedCells.indexOf(selectedCell);
           if (index == 0 || index == selectedCells.size() - 1) {
             dateListener.onDateUnselected(selectedDate);

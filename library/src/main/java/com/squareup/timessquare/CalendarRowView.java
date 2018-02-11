@@ -1,10 +1,13 @@
 // Copyright 2012 Square, Inc.
 package com.squareup.timessquare;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Typeface;
 import android.util.AttributeSet;
+import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
@@ -14,7 +17,7 @@ import static android.view.View.MeasureSpec.EXACTLY;
 import static android.view.View.MeasureSpec.makeMeasureSpec;
 
 /** TableRow that draws a divider between each cell. To be used with {@link CalendarGridView}. */
-public class CalendarRowView extends ViewGroup implements View.OnClickListener {
+public class CalendarRowView extends ViewGroup implements View.OnClickListener, View.OnTouchListener {
   private boolean isHeaderRow;
   private MonthView.Listener listener;
 
@@ -22,8 +25,16 @@ public class CalendarRowView extends ViewGroup implements View.OnClickListener {
     super(context, attrs);
   }
 
+  @SuppressLint("NewApi")
   @Override public void addView(View child, int index, ViewGroup.LayoutParams params) {
-    child.setOnClickListener(this);
+    child.setOnTouchListener(this);
+    child.setOnHoverListener(new OnHoverListener() {
+      @Override
+      public boolean onHover(View view, MotionEvent motionEvent) {
+        Log.d("CalendarRowView", "hovering");
+        return false;
+      }
+    });
     super.addView(child, index, params);
   }
 
@@ -73,6 +84,16 @@ public class CalendarRowView extends ViewGroup implements View.OnClickListener {
     if (listener != null) {
       listener.handleClick((MonthCellDescriptor) v.getTag());
     }
+  }
+
+  @Override public boolean onTouch(View view, MotionEvent motionEvent) {
+    Log.d("CalendarRowView", "Touched detected");
+    if (listener != null && (motionEvent.getAction() == MotionEvent.ACTION_DOWN)) {
+      listener.handleClick((MonthCellDescriptor) view.getTag());
+      return true;
+    }
+
+    return false;
   }
 
   public void setListener(MonthView.Listener listener) {
