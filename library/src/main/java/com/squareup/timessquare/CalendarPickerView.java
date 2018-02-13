@@ -547,6 +547,10 @@ public class CalendarPickerView extends ListView {
     return (selectedCals.size() > 0 ? selectedCals.get(0).getTime() : null);
   }
 
+  public List<Calendar> getRanges() {
+    return selectedCals;
+  }
+
   public List<Date> getSelectedDates() {
     List<Date> selectedDates = new ArrayList<>();
     for (MonthCellDescriptor cal : selectedCells) {
