@@ -8,12 +8,15 @@ import android.content.res.TypedArray;
 import android.graphics.Typeface;
 import android.text.format.DateUtils;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AbsListView;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
+
 import java.text.DateFormat;
 import java.text.DateFormatSymbols;
 import java.text.SimpleDateFormat;
@@ -45,6 +48,16 @@ import static java.util.Calendar.YEAR;
  * {@link #getSelectedDate()}.
  */
 public class CalendarPickerView extends ListView {
+
+
+  public OnMonthSelectedListener getMonthSelectedListener() {
+    return monthSelectedListener;
+  }
+
+  public void setMonthSelectedListener(OnMonthSelectedListener monthSelectedListener) {
+    this.monthSelectedListener = monthSelectedListener;
+  }
+
   public enum SelectionMode {
     /**
      * Only one date will be selectable.  If there is already a selected date and you select a new
@@ -64,14 +77,14 @@ public class CalendarPickerView extends ListView {
     /**
      * Allows you to select multiple ranges
      */
-    MULTI_RANGE
+    MULTI_RANGE;
   }
-
   // List of languages that require manually creation of YYYY MMMM date format
   private static final ArrayList<String> explicitlyNumericYearLocaleLanguages =
       new ArrayList<>(Arrays.asList("ar", "my"));
 
   private final CalendarPickerView.MonthAdapter adapter;
+
   private final IndexedLinkedHashMap<String, List<List<MonthCellDescriptor>>> cells =
       new IndexedLinkedHashMap<>();
   final MonthView.Listener listener = new CellClickedListener();
@@ -90,6 +103,7 @@ public class CalendarPickerView extends ListView {
   private boolean displayOnly;
   SelectionMode selectionMode;
   Calendar today;
+  private boolean shouldSnapToMonth;
   private int dividerColor;
   private int dayBackgroundResId;
   private int dayTextColorResId;
@@ -101,6 +115,7 @@ public class CalendarPickerView extends ListView {
   private Typeface titleTypeface;
   private Typeface dateTypeface;
 
+  private OnMonthSelectedListener monthSelectedListener;
   private OnDateSelectedListener dateListener;
   private DateSelectableFilter dateConfiguredListener;
   private OnInvalidDateSelectedListener invalidDateListener =
@@ -147,6 +162,7 @@ public class CalendarPickerView extends ListView {
             a.getBoolean(R.styleable.CalendarPickerView_tsquare_displayDayNamesHeaderRow, true);
     displayAlwaysDigitNumbers =
             a.getBoolean(R.styleable.CalendarPickerView_tsquare_displayAlwaysDigitNumbers, false);
+    shouldSnapToMonth = a.getBoolean(R.styleable.CalendarPickerView_tsquare_snapToMonth, false);
 
     a.recycle();
 
@@ -155,6 +171,7 @@ public class CalendarPickerView extends ListView {
     setDividerHeight(0);
     setBackgroundColor(bg);
     setCacheColorHint(bg);
+
     timeZone = TimeZone.getDefault();
     locale = Locale.getDefault();
     today = Calendar.getInstance(timeZone, locale);
@@ -172,6 +189,47 @@ public class CalendarPickerView extends ListView {
 
       init(new Date(), nextYear.getTime()) //
           .withSelectedDate(new Date());
+    }
+
+    if (shouldSnapToMonth) {
+      this.setOnScrollListener(new OnScrollListener() {
+
+        private boolean wasScrolling;
+
+        @Override
+        public void onScrollStateChanged(AbsListView view, int scrollState) {
+          switch (scrollState) {
+            case OnScrollListener.SCROLL_STATE_IDLE:
+              if (wasScrolling) {
+                // get first visible item
+                View itemView = view.getChildAt(0);
+                int top = Math.abs(itemView.getTop()); // top is a negative value
+                int bottom = Math.abs(itemView.getBottom());
+
+                int item = view.getFirstVisiblePosition();
+                if (top >= bottom) {
+                  item = view.getFirstVisiblePosition() + 1;
+                }
+                ((ListView) view).setSelectionFromTop(item, 0);
+
+                if (monthSelectedListener != null) {
+                  MonthDescriptor month = months.get(item);
+                  monthSelectedListener.onMonthSelected(month.getMonth(), month.getYear());
+                }
+              }
+              wasScrolling = false;
+              break;
+            case OnScrollListener.SCROLL_STATE_TOUCH_SCROLL:
+            case OnScrollListener.SCROLL_STATE_FLING:
+              wasScrolling = true;
+              break;
+          }
+        }
+
+        @Override
+        public void onScroll(AbsListView absListView, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
+        }
+      });
     }
   }
 
@@ -408,6 +466,7 @@ public class CalendarPickerView extends ListView {
       monthsReverseOrder = monthsRevOrder;
       return this;
     }
+
   }
 
   private void validateAndUpdate() {
@@ -1015,7 +1074,7 @@ public class CalendarPickerView extends ListView {
     }
   }
 
-  /** Return cell and month-index (for scrolling) for a given Date. */
+  /** Return cell and month-index (for wasScrolling) for a given Date. */
   private MonthCellWithMonthIndex getMonthCellWithIndexByDate(Date date) {
     Calendar searchCal = Calendar.getInstance(timeZone, locale);
     searchCal.setTime(date);
@@ -1230,6 +1289,13 @@ public class CalendarPickerView extends ListView {
   }
 
   /**
+   * Interface to be notified when a new month has been selected
+   */
+  public interface OnMonthSelectedListener {
+    void onMonthSelected(int month, int year);
+  }
+
+  /**
    * Interface to be notified when a new date is selected or unselected. This will only be called
    * when the user initiates the date selection.  If you call {@link #selectDate(Date)} this
    * listener will not be notified.
@@ -1238,7 +1304,6 @@ public class CalendarPickerView extends ListView {
    */
   public interface OnDateSelectedListener {
     void onDateSelected(Date date);
-
     void onDateUnselected(Date date);
   }
 
