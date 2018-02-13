@@ -856,7 +856,7 @@ public class CalendarPickerView extends ListView {
                         && singleCell.isSelectable()) {
                   singleCell.setSelected(true);
                   singleCell.setRangeState(RangeState.MIDDLE);
-                  selectedCells.add(singleCell);
+//                  selectedCells.add(singleCell);
                 } else if (singleCell.getDate().getDay() == start.get(Calendar.DAY_OF_YEAR) && singleCell.getDate().getYear() == start.get(Calendar.YEAR)) {
                   singleCell.setRangeState(RangeState.FIRST);
                 } else if (singleCell.getDate().getDay() == end.get(Calendar.DAY_OF_YEAR) && singleCell.getDate().getYear() == end.get(Calendar.YEAR)) {
