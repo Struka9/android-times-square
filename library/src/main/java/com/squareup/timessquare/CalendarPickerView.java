@@ -6,15 +6,13 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Typeface;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.text.format.DateUtils;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AbsListView;
-import android.widget.BaseAdapter;
-import android.widget.ListView;
 import android.widget.Toast;
 
 import java.text.DateFormat;
@@ -47,7 +45,7 @@ import static java.util.Calendar.YEAR;
  * {@link FluentInitializer} methods returned.  The currently selected date can be retrieved with
  * {@link #getSelectedDate()}.
  */
-public class CalendarPickerView extends ListView {
+public class CalendarPickerView extends RecyclerView {
 
 
   public OnMonthSelectedListener getMonthSelectedListener() {
@@ -167,10 +165,8 @@ public class CalendarPickerView extends ListView {
     a.recycle();
 
     adapter = new MonthAdapter();
-    setDivider(null);
-    setDividerHeight(0);
+    setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
     setBackgroundColor(bg);
-    setCacheColorHint(bg);
 
     timeZone = TimeZone.getDefault();
     locale = Locale.getDefault();
@@ -192,44 +188,7 @@ public class CalendarPickerView extends ListView {
     }
 
     if (shouldSnapToMonth) {
-      this.setOnScrollListener(new OnScrollListener() {
 
-        private boolean wasScrolling;
-
-        @Override
-        public void onScrollStateChanged(AbsListView view, int scrollState) {
-          switch (scrollState) {
-            case OnScrollListener.SCROLL_STATE_IDLE:
-              if (wasScrolling) {
-                // get first visible item
-                View itemView = view.getChildAt(0);
-                int top = Math.abs(itemView.getTop()); // top is a negative value
-                int bottom = Math.abs(itemView.getBottom());
-
-                int item = view.getFirstVisiblePosition();
-                if (top >= bottom) {
-                  item = view.getFirstVisiblePosition() + 1;
-                }
-                ((ListView) view).setSelectionFromTop(item, 0);
-
-                if (monthSelectedListener != null) {
-                  MonthDescriptor month = months.get(item);
-                  monthSelectedListener.onMonthSelected(month.getMonth(), month.getYear());
-                }
-              }
-              wasScrolling = false;
-              break;
-            case OnScrollListener.SCROLL_STATE_TOUCH_SCROLL:
-            case OnScrollListener.SCROLL_STATE_FLING:
-              wasScrolling = true;
-              break;
-          }
-        }
-
-        @Override
-        public void onScroll(AbsListView absListView, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
-        }
-      });
     }
   }
 
@@ -488,7 +447,7 @@ public class CalendarPickerView extends ListView {
         if (smoothScroll) {
           smoothScrollToPosition(selectedIndex);
         } else {
-          setSelection(selectedIndex);
+          scrollToPosition(selectedIndex);
         }
       }
     });
@@ -1094,49 +1053,54 @@ public class CalendarPickerView extends ListView {
     return null;
   }
 
-  private class MonthAdapter extends BaseAdapter {
+  private class MonthAdapter extends RecyclerView.Adapter<MonthViewHolder> {
     private final LayoutInflater inflater;
 
     private MonthAdapter() {
       inflater = LayoutInflater.from(getContext());
     }
 
-    @Override public boolean isEnabled(int position) {
-      // Disable selectability: each cell will handle that itself.
-      return false;
-    }
-
-    @Override public int getCount() {
+    @Override public int getItemCount() {
       return months.size();
-    }
-
-    @Override public Object getItem(int position) {
-      return months.get(position);
     }
 
     @Override public long getItemId(int position) {
       return position;
     }
 
-    @Override public View getView(int position, View convertView, ViewGroup parent) {
-      MonthView monthView = (MonthView) convertView;
-      if (monthView == null //
-          || !monthView.getTag(R.id.day_view_adapter_class).equals(dayViewAdapter.getClass())) {
-        monthView =
-            MonthView.create(parent, inflater, weekdayNameFormat, listener, today, dividerColor,
-                dayBackgroundResId, dayTextColorResId, titleTextStyle, displayHeader,
-                headerTextColor, displayDayNamesHeaderRow, displayAlwaysDigitNumbers,
-                decorators, locale, dayViewAdapter);
-        monthView.setTag(R.id.day_view_adapter_class, dayViewAdapter.getClass());
-      } else {
-        monthView.setDecorators(decorators);
-      }
+    @Override
+    public MonthViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+
+      MonthView item =
+              MonthView.create(parent, inflater, weekdayNameFormat, listener, today, dividerColor,
+                      dayBackgroundResId, dayTextColorResId, titleTextStyle, displayHeader,
+                      headerTextColor, displayDayNamesHeaderRow, displayAlwaysDigitNumbers,
+                      decorators, locale, dayViewAdapter);
+
+
+      item.setDecorators(decorators);
+
+      return new MonthViewHolder(item);
+    }
+
+    @Override
+    public void onBindViewHolder(MonthViewHolder holder, int position) {
       if (monthsReverseOrder) {
         position = months.size() - position - 1;
       }
-      monthView.init(months.get(position), cells.getValueAtIndex(position), displayOnly,
-          titleTypeface, dateTypeface);
-      return monthView;
+      holder.init(months.get(position), cells.getValueAtIndex(position), displayOnly,
+              titleTypeface, dateTypeface);
+    }
+  }
+
+  public class MonthViewHolder<V> extends RecyclerView.ViewHolder {
+
+    public MonthViewHolder(View itemView) {
+      super(itemView);
+    }
+
+    public void init(MonthDescriptor descriptor, List<List<MonthCellDescriptor>> cells, boolean displayOnly, Typeface typeface, Typeface dateTypeface) {
+      ((MonthView)itemView).init(descriptor, cells, displayOnly, typeface, dateTypeface);
     }
   }
 

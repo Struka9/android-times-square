@@ -49,6 +49,13 @@ public class SampleTimesSquareActivity extends Activity {
         .inMode(SelectionMode.SINGLE) //
         .withSelectedDate(new Date());
 
+    calendar.setMonthSelectedListener(new CalendarPickerView.OnMonthSelectedListener() {
+          @Override
+          public void onMonthSelected(int month, int year) {
+            Log.d("CalendarSample", "month: " + month + " year: " + year);
+          }
+        });
+
     initButtonListeners(nextYear, lastYear);
   }
 
@@ -127,11 +134,11 @@ public class SampleTimesSquareActivity extends Activity {
         ArrayList<Date> dates = new ArrayList<Date>();
         today.add(Calendar.DATE, 3);
         dates.add(today.getTime());
-        today.add(Calendar.DATE, 5);
+        today.add(Calendar.DATE, 1);
         dates.add(today.getTime());
         calendar.setDecorators(Collections.<CalendarCellDecorator>emptyList());
         calendar.init(new Date(), nextYear.getTime()) //
-            .inMode(SelectionMode.RANGE) //
+            .inMode(SelectionMode.MULTI_RANGE) //
             .withSelectedDates(dates);
       }
     });

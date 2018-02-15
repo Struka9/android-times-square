@@ -33,6 +33,7 @@ android {
 }
 
 dependencies {
+  compile "com.android.support:recyclerview-v7:27.0.2"
   testCompile deps.festandroid
   testCompile deps.junit
   testCompile deps.robolectric
