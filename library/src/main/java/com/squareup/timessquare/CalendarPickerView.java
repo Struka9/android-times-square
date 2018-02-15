@@ -13,6 +13,7 @@ import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AbsListView;
 import android.widget.Toast;
 
 import java.text.DateFormat;
@@ -188,7 +189,40 @@ public class CalendarPickerView extends RecyclerView {
     }
 
     if (shouldSnapToMonth) {
+      this.setOnScrollListener(new OnScrollListener() {
+        private boolean wasScrolling;
 
+        @Override
+        public void onScrollStateChanged(RecyclerView view, int scrollState) {
+          LinearLayoutManager linearLayoutManager = (LinearLayoutManager) view.getLayoutManager();
+          switch (scrollState) {
+            case RecyclerView.SCROLL_STATE_IDLE:
+              if (wasScrolling) {
+                // get first visible item
+                View itemView = view.getChildAt(0);
+                int top = Math.abs(itemView.getTop()); // top is a negative value
+                int bottom = Math.abs(itemView.getBottom());
+
+                int item = linearLayoutManager.findFirstVisibleItemPosition();
+                if (top >= bottom) {
+                  item += 1;
+                }
+                view.scrollToPosition(item);
+
+                if (monthSelectedListener != null) {
+                  MonthDescriptor month = months.get(item);
+                  monthSelectedListener.onMonthSelected(month.getMonth(), month.getYear());
+                }
+              }
+              wasScrolling = false;
+              break;
+            case RecyclerView.SCROLL_STATE_DRAGGING:
+            case RecyclerView.SCROLL_STATE_SETTLING:
+              wasScrolling = true;
+              break;
+          }
+        }
+      });
     }
   }
 
