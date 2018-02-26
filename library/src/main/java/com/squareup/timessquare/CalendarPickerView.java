@@ -916,9 +916,13 @@ public class CalendarPickerView extends RecyclerView {
                   singleCell.setSelected(true);
                   singleCell.setRangeState(RangeState.MIDDLE);
 //                  selectedCells.add(singleCell);
-                } else if (singleCalendar.get(Calendar.DAY_OF_YEAR) == start.get(Calendar.DAY_OF_YEAR) && singleCalendar.get(Calendar.YEAR) == start.get(Calendar.YEAR)) {
+                } else if (singleCalendar.get(Calendar.DAY_OF_YEAR) == start.get(Calendar.DAY_OF_YEAR)
+                        && singleCalendar.get(Calendar.YEAR) == start.get(Calendar.YEAR)
+                        && start.compareTo(end) != 0) {
                   singleCell.setRangeState(RangeState.FIRST);
-                } else if (singleCalendar.get(Calendar.DAY_OF_YEAR) == end.get(Calendar.DAY_OF_YEAR) && singleCalendar.get(Calendar.YEAR) == end.get(Calendar.YEAR)) {
+                } else if (singleCalendar.get(Calendar.DAY_OF_YEAR) == end.get(Calendar.DAY_OF_YEAR)
+                        && singleCalendar.get(Calendar.YEAR) == end.get(Calendar.YEAR)
+                        && start.compareTo(end) != 0) {
                   singleCell.setRangeState(RangeState.LAST);
                 }
               }
