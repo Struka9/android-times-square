@@ -49,9 +49,9 @@ public class SampleTimesSquareActivity extends Activity {
         .inMode(SelectionMode.SINGLE) //
         .withSelectedDate(new Date());
 
-    calendar.setMonthSelectedListener(new CalendarPickerView.OnMonthSelectedListener() {
+    calendar.setMonthSelectedListener(new CalendarPickerView.OnMonthVisibleListener() {
           @Override
-          public void onMonthSelected(int month, int year) {
+          public void onMonthVisible(int month, int year) {
             Log.d("CalendarSample", "month: " + month + " year: " + year);
           }
         });
