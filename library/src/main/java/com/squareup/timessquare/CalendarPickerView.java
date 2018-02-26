@@ -907,15 +907,18 @@ public class CalendarPickerView extends RecyclerView {
             List<List<MonthCellDescriptor>> month = cells.getValueAtIndex(monthIndex);
             for (List<MonthCellDescriptor> week : month) {
               for (MonthCellDescriptor singleCell : week) {
+                Calendar singleCalendar = Calendar.getInstance();
+                singleCalendar.setTime(singleCell.getDate());
+
                 if (singleCell.getDate().after(start.getTime())
                         && singleCell.getDate().before(end.getTime())
                         && singleCell.isSelectable()) {
                   singleCell.setSelected(true);
                   singleCell.setRangeState(RangeState.MIDDLE);
 //                  selectedCells.add(singleCell);
-                } else if (singleCell.getDate().getDay() == start.get(Calendar.DAY_OF_YEAR) && singleCell.getDate().getYear() == start.get(Calendar.YEAR)) {
+                } else if (singleCalendar.get(Calendar.DAY_OF_YEAR) == start.get(Calendar.DAY_OF_YEAR) && singleCalendar.get(Calendar.YEAR) == start.get(Calendar.YEAR)) {
                   singleCell.setRangeState(RangeState.FIRST);
-                } else if (singleCell.getDate().getDay() == end.get(Calendar.DAY_OF_YEAR) && singleCell.getDate().getYear() == end.get(Calendar.YEAR)) {
+                } else if (singleCalendar.get(Calendar.DAY_OF_YEAR) == end.get(Calendar.DAY_OF_YEAR) && singleCalendar.get(Calendar.YEAR) == end.get(Calendar.YEAR)) {
                   singleCell.setRangeState(RangeState.LAST);
                 }
               }
